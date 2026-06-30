@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Francisca Village Phase II - Interactive Map</title>
+    <style>
+        :root {
+            --primary-color: #1a4d2e;
+            --accent-color: #ff4d4d;
+            --bg-light: #f4f7f5;
+            --dark-text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            color: var(--dark-text);
+        }
+
+        .site-header {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 20px 10px;
+        }
+
+        .site-header h1 { margin: 0; font-size: 2rem; letter-spacing: 1px; }
+        .site-header p { margin: 5px 0 0 0; opacity: 0.9; }
+
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 1400px;
+            margin: 20px auto;
+            gap: 20px;
+            padding: 0 15px;
+        }
+
+        .map-wrapper {
+            flex: 1 1 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .map-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #subdivision-map {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Interactive Lot SVG Paths */
+        .lot-path {
+            fill-opacity: 0.1;
+            stroke: #333;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lot-path.available { fill: #fff; }
+        .lot-path.available:hover { fill: #2ecc71; fill-opacity: 0.4; }
+        .lot-path.sold { fill: var(--accent-color); fill-opacity: 0.5; cursor: not-allowed; }
+
+        /* Sidebar UI */
+        .sidebar-calculator {
+            flex: 1 1 400px;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+
+        .hidden { display: none !important; }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .radio-tile-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tile {
+            flex: 1;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .tile input { display: none; }
+        .tile:has(input:checked) {
+            border-color: var(--primary-color);
+            background-color: #eef7f2;
+            color: var(--primary-color);
+        }
+
+        #house-preview-container img {
+            width: 100%;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+
+        /* Financial Ledger Breakdown */
+        .price-ledger {
+            background-color: #f9fbf9;
+            border: 1px solid #e1ede4;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .ledger-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .total-row {
+            font-weight: bold;
+            font-size: 1.15rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .ledger-sub-title {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #666;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .amortization-highlight {
+            background: #fff3f3;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            border: 1px solid #ffe1e1;
+        }
+
+        .disclaimer {
+            display: block;
+            margin-top: 15px;
+            color: #7f8c8d;
+            font-size: 0.75rem;
+            line-height: 1.3;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="site-header">
+        <h1>FRANCISCA VILLAGE, PHASE II</h1>
+        <p>Location: Alibagu, City of Ilagan, Isabela</p>
+    </header>
+
+    <main class="main-container">
+        <section class="map-wrapper">
+            <h3>Interactive Subdivision Map Layout</h3>
+            <p class="instruction">⬅️ Click on any white lot to calculate pricing ➡️</p>
+            
+            <div class="map-container">
+                <svg id="subdivision-map" viewBox="0 0 1000 1400" xmlns="http://www.w3.org/2000/svg">
+                    <image href="OCITA SUBDIVISION PLAN.jpg" width="1000" height="1400" x="0" y="0" />
+                    
+                    <rect class="lot-path available" x="550" y="80" width="40" height="60" data-block="1" data-lot="1" data-area="128" />
+                    <rect class="lot-path available" x="590" y="80" width="40" height="60" data-block="1" data-lot="2" data-area="120" />
+                    <rect class="lot-path available" x="630" y="80" width="40" height="60" data-block="1" data-lot="3" data-area="90" />
+                    <rect class="lot-path available" x="670" y="80" width="40" height="60" data-block="1" data-lot="4" data-area="90" />
+                    
+                    <rect class="lot-path sold" x="420" y="380" width="35" height="55" data-block="6" data-lot="1" data-area="80" />
+                </svg>
+            </div>
+        </section>
+
+        <aside class="sidebar-calculator" id="calc-sidebar">
+            <div id="welcome-message">
+                <h2>Select a Lot</h2>
+                <p>Click on any available lot on the map layout to calculate standard packages, custom areas, down payments, and Pag-IBIG or In-House terms.</p>
+            </div>
+
+            <div id="calculator-core" class="hidden">
+                <h2 id="display-lot-title">Block 0 Lot 0</h2>
+                <div class="badge">Available</div>
+                <p class="lot-metric">Lot Area: <span id="display-lot-area">0</span> sqm</p>
+
+                <div class="control-group">
+                    <label><strong>Choose Package Option:</strong></label>
+                    <div class="radio-tile-group">
+                        <label class="tile">
+                            <input type="radio" name="product-type" value="lot-only" checked onchange="calculatePackage()">
+                            <span>Lot Only</span>
+                        </label>
+                        <label class="tile">
+                            <input type="radio" name="product-type" value="nano" onchange="calculatePackage()">
+                            <span>Bungalow (Nano)</span>
+                        </label>
+                        <label class="tile">
+                            <input type="radio" name="product-type" value="alexa" onchange="calculatePackage()">
+                            <span>2-Storey (Alexa)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="house-preview-container" class="hidden">
+                    <img id="house-preview-img" src="" alt="House perspective rendering">
+                </div>
+
+                <div class="control-group">
+                    <label for="financing-type"><strong>Financing Scheme:</strong></label>
+                    <select id="financing-type" onchange="calculatePackage()">
+                        <option value="pagibig">Pag-IBIG Housing Loan</option>
+                        <option value="inhouse">In-House Financing</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="dp-option"><strong>Downpayment Option:</strong></label>
+                    <select id="dp-option" onchange="calculatePackage()">
+                        <option value="optA">Option A (Standard Structure)</option>
+                        <option value="optB">Option B (Alternative Equity Adjustments)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="loan-term"><strong>Payment Term:</strong></label>
+                    <select id="loan-term" onchange="calculatePackage()">
+                        <option value="30">30 Years to pay</option>
+                        <option value="25">25 Years to pay</option>
+                        <option value="20" selected>20 Years to pay</option>
+                        <option value="15">15 Years to pay</option>
+                        <option value="10">10 Years to pay</option>
+                        <option value="5">5 Years to pay</option>
+                    </select>
+                </div>
+
+                <hr>
+
+                <div class="price-ledger">
+                    <h3>Computation Breakdown</h3>
+                    <div class="ledger-row"><span>Base Lot Price:</span><span id="out-base-lot">₱0.00</span></div>
+                    <div class="ledger-row"><span>12% VAT:</span><span id="out-vat">₱0.00</span></div>
+                    <div class="ledger-row" id="house-cost-row"><span>House Construction:</span><span id="out-house-cost">₱0.00</span></div>
+                    <div class="ledger-row total-row"><span>Total Package Cost:</span><span id="out-tpc">₱0.00</span></div>
+                    
+                    <div class="ledger-sub-title">Financing Rules Applied</div>
+                    <div class="ledger-row"><span>Estimated Loan:</span><span id="out-loan">₱0.00</span></div>
+                    <div class="ledger-row"><span>Equity / Balance:</span><span id="out-equity">₱0.00</span></div>
+                    <div class="ledger-row"><span>Downpayment Paid:</span><span id="out-dp">₱0.00</span></div>
+                    <div class="ledger-row amortization-highlight"><span>Monthly Amortization:</span><span id="out-monthly">₱0.00</span></div>
+                    
+                    <small class="disclaimer">*₱0 Miscellaneous Fees. Computed prices are baseline approximations subject to contract confirmations.</small>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        const COST_PER_SQM = 8000;
+        const VAT_RATE = 0.12;
+
+        let activeLot = { block: 0, lot: 0, area: 80 };
+
+        document.querySelectorAll('.lot-path.available').forEach(lot => {
+            lot.addEventListener('click', function() {
+                activeLot.block = this.getAttribute('data-block');
+                activeLot.lot = this.getAttribute('data-lot');
+                activeLot.area = parseFloat(this.getAttribute('data-area'));
+
+                document.getElementById('welcome-message').classList.add('hidden');
+                document.getElementById('calculator-core').classList.remove('hidden');
+                document.getElementById('display-lot-title').innerText = `Block ${activeLot.block} Lot ${activeLot.lot}`;
+                document.getElementById('display-lot-area').innerText = activeLot.area;
+
+                calculatePackage();
+            });
+        });
+
+        function calculatePackage() {
+            const selectedProduct = document.querySelector('input[name="product-type"]:checked').value;
+            const selectedFinancing = document.getElementById('financing-type').value;
+            const selectedOption = document.getElementById('dp-option').value;
+            const termYears = parseInt(document.getElementById('loan-term').value);
+
+            const previewContainer = document.getElementById('house-preview-container');
+            const previewImg = document.getElementById('house-preview-img');
+            const houseRow = document.getElementById('house-cost-row');
+
+            if (selectedProduct === 'lot-only') {
+                previewContainer.classList.add('hidden');
+                houseRow.classList.add('hidden');
+            } else {
+                previewContainer.classList.remove('hidden');
+                houseRow.classList.remove('hidden');
+                previewImg.src = (selectedProduct === 'nano') ? 'PERSPECTIVE-bungalow.png' : 'PERSPECTIVE-2 storey.png';
+            }
+
+            let baseLotPrice = activeLot.area * COST_PER_SQM;
+            let vatAmount = baseLotPrice * VAT_RATE;
+            let totalLotPackage = baseLotPrice + vatAmount;
+
+            let houseConstructionCost = 0;
+            let totalContractPrice = 0;
+
+            let lotVarianceSqm = activeLot.area - 80;
+            let priceVarianceWithVat = lotVarianceSqm * (COST_PER_SQM * (1 + VAT_RATE));
+
+            if (selectedProduct === 'lot-only') {
+                totalContractPrice = totalLotPackage;
+            } else if (selectedProduct === 'nano') {
+                totalContractPrice = 2350400 + priceVarianceWithVat;
+                houseConstructionCost = totalContractPrice - totalLotPackage;
+            } else if (selectedProduct === 'alexa') {
+                totalContractPrice = 4412000 + priceVarianceWithVat;
+                houseConstructionCost = totalContractPrice - totalLotPackage;
+            }
+
+            let loanApproval = 0;
+            let equityBalance = 0;
+            let downpaymentValue = 0;
+            let monthlyAmortization = 0;
+
+            if (selectedProduct === 'lot-only') {
+                loanApproval = 400000 + (lotVarianceSqm * 4000);
+                equityBalance = totalContractPrice - loanApproval;
+                downpaymentValue = (selectedOption === 'optA') ? 50000 : 100000;
+            } else {
+                let loanRatio = 0.70;
+                loanApproval = Math.round(totalContractPrice * loanRatio);
+                equityBalance = totalContractPrice - loanApproval;
+                downpaymentValue = Math.round(equityBalance * 0.50);
+            }
+
+            let monthlyRateFactor = 0.0065;
+            if (selectedFinancing === 'inhouse') {
+                monthlyRateFactor = 0.012;
+            }
+            
+            let totalMonths = termYears * 12;
+            monthlyAmortization = (loanApproval * monthlyRateFactor) / (1 - Math.pow(1 + monthlyRateFactor, -totalMonths));
+
+            if (isNaN(monthlyAmortization) || !isFinite(monthlyAmortization)) {
+                monthlyAmortization = loanApproval / totalMonths;
+            }
+
+            document.getElementById('out-base-lot').innerText = formatPHP(baseLotPrice);
+            document.getElementById('out-vat').innerText = formatPHP(vatAmount);
+            document.getElementById('out-house-cost').innerText = formatPHP(houseConstructionCost);
+            document.getElementById('out-tpc').innerText = formatPHP(totalContractPrice);
+            document.getElementById('out-loan').innerText = formatPHP(loanApproval);
+            document.getElementById('out-equity').innerText = formatPHP(equityBalance);
+            document.getElementById('out-dp').innerText = formatPHP(downpaymentValue);
+            document.getElementById('out-monthly').innerText = formatPHP(monthlyAmortization);
+        }
+
+        function formatPHP(num) {
+            return '₱' + Math.max(0, num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    </script>
+</body>
+</html>
